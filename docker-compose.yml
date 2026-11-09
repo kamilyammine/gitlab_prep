@@ -1,0 +1,62 @@
+name: gitlab
+
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:${GITLAB_VERSION}
+    container_name: gitlab
+    hostname: ${GITLAB_HOSTNAME}
+    restart: unless-stopped
+    shm_size: "256m"
+    environment:
+      TZ: ${TZ:-UTC}
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url '${GITLAB_EXTERNAL_URL}'
+
+        # Always plain HTTP on port 80 inside the container; TLS (if any) is done by a front proxy.
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+
+        # Offline: never contact Let's Encrypt or phone home.
+        letsencrypt['enable'] = false
+        gitlab_rails['usage_ping_enabled'] = false
+
+        gitlab_rails['gitlab_shell_ssh_port'] = ${GITLAB_SSH_PORT}
+        gitlab_rails['time_zone'] = '${TZ:-UTC}'
+
+        # Trust a reverse proxy on private networks so client IPs are logged correctly.
+        nginx['real_ip_trusted_addresses'] = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']
+        nginx['real_ip_header'] = 'X-Forwarded-For'
+        nginx['real_ip_recursive'] = 'on'
+
+        # Bundled Prometheus stack is not needed for a single node; saves ~1 GB RAM.
+        prometheus_monitoring['enable'] = false
+    ports:
+      - "${GITLAB_HTTP_PORT}:80"
+      - "${GITLAB_SSH_PORT}:22"
+    volumes:
+      - ${DATA_DIR}/config:/etc/gitlab
+      - ${DATA_DIR}/logs:/var/log/gitlab
+      - ${DATA_DIR}/data:/var/opt/gitlab
+    networks:
+      gitlab-net:
+        aliases:
+          - gitlab
+
+  gitlab-runner:
+    image: gitlab/gitlab-runner:${RUNNER_VERSION}
+    container_name: gitlab-runner
+    restart: unless-stopped
+    depends_on:
+      - gitlab
+    environment:
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ${DATA_DIR}/runner:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - gitlab-net
+
+networks:
+  # Fixed name so CI job containers can join it (runner config: network_mode = "gitlab-net").
+  gitlab-net:
+    name: gitlab-net

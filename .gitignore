@@ -1,0 +1,7 @@
+# Image tarballs are multi-GB (GitHub limit 100 MB) - regenerate with scripts/prepare-images.*
+images/*
+!images/.gitkeep
+
+# Runtime data and backups created on the VM
+data/
+backups/
