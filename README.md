@@ -105,6 +105,7 @@ GitLab must be upgraded along its official **upgrade path**, so you can't jump a
 
 ## Troubleshooting
 
+- **`Permission denied` running `./scripts/x.sh`**: the folder was copied from Windows (scp/USB), which drops the executable bit. Fix with `chmod +x scripts/*.sh`, or use `bash scripts/x.sh`.
 - **`$'\r': command not found`**: the files got Windows line endings during the copy. Fix with: `sed -i 's/\r$//' .env docker-compose.yml scripts/*.sh`
 - **Unhealthy after deploy**: run `docker compose logs gitlab | tail -100`. The usual causes are too little RAM or a port already in use (`ss -tlnp`).
 - **Job stuck with "pull access denied" / "no such host"**: the image isn't loaded on the VM. Run `docker images` to check.
